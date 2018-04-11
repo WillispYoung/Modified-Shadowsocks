@@ -23,15 +23,12 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".ui.TrafficStatus"
-            android:launchMode="singleTask"/>
+        <activity android:name=".ui.TrafficStatus"/>
+
+        <activity android:name=".ui.SessionDetail"/>
 
         <activity
-            android:name=".ui.SessionDetail"/>
-
-        <activity
-            android:name="com.vm.shadowsocks.ui.AppManager"
+            android:name=".ui.AppManager"
             android:label="@string/proxied_apps"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"/>

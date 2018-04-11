@@ -116,7 +116,7 @@ public class TrafficStatus extends Activity {
         observable.subscribe(observer);
         
      }
-    
+     
     public void startNewActivity(Intent intent) {
         startActivity(intent);
     }
