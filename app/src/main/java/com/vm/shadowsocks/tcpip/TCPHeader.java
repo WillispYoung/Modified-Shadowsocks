@@ -10,15 +10,15 @@ public class TCPHeader {
     public static final int ACK = 16;
     public static final int URG = 32;
 
-    static final short offset_src_port = 0; // 16位源端口
-    static final short offset_dest_port = 2; // 16位目的端口
-    static final int offset_seq = 4; // 32位序列号
-    static final int offset_ack = 8; // 32位确认号
-    static final byte offset_lenres = 12; // 4位首部长度/4位保留字
-    static final byte offset_flag = 13; // 6位标志位
-    static final short offset_win = 14; // 16位窗口大小
-    static final short offset_crc = 16; // 16位校验和
-    static final short offset_urp = 18; // 16位紧急数据偏移量
+    static final short offset_src_port = 0;         // 16位源端口
+    static final short offset_dest_port = 2;        // 16位目的端口
+    static final int offset_seq = 4;                // 32位序列号
+    static final int offset_ack = 8;                // 32位确认号
+    static final byte offset_lenres = 12;           // 4位首部长度/4位保留字
+    static final byte offset_flag = 13;             // 6位标志位
+    static final short offset_win = 14;             // 16位窗口大小
+    static final short offset_crc = 16;             // 16位校验和
+    static final short offset_urp = 18;             // 16位紧急数据偏移量
 
     public byte[] m_Data;
     public int m_Offset;

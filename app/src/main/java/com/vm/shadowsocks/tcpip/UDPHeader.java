@@ -1,10 +1,10 @@
 package com.vm.shadowsocks.tcpip;
 
 public class UDPHeader {
-    static final short offset_src_port = 0; // Source port
-    static final short offset_dest_port = 2; // Destination port
-    static final short offset_tlen = 4; // Datagram length
-    static final short offset_crc = 6; // Checksum
+    static final short offset_src_port = 0;             // Source port
+    static final short offset_dest_port = 2;            // Destination port
+    static final short offset_tlen = 4;                 // Datagram length
+    static final short offset_crc = 6;                  // Checksum
 
     public byte[] m_Data;
     public int m_Offset;

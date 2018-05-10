@@ -400,7 +400,7 @@ public class LocalVpnService extends VpnService implements Runnable {
         }
 
         Class<?> SystemProperties = Class.forName("android.os.SystemProperties");
-        Method method = SystemProperties.getMethod("get", new Class[]{String.class});
+        Method method = SystemProperties.getMethod("get", String.class);
         ArrayList<String> servers = new ArrayList<String>();
         for (String name : new String[]{"net.dns1", "net.dns2", "net.dns3", "net.dns4",}) {
             String value = (String) method.invoke(null, name);

@@ -35,7 +35,6 @@ public class TcpProxyServer implements Runnable {
     
     public TcpProxyServer(int port) throws Exception {
         m_Selector = Selector.open();
-        
         m_ServerSocketChannel = ServerSocketChannel.open();
         m_ServerSocketChannel.configureBlocking(false);
         m_ServerSocketChannel.socket().bind(new InetSocketAddress(port));
@@ -81,12 +80,10 @@ public class TcpProxyServer implements Runnable {
         short portKey = (short) localChannel.socket().getPort();
         NatSession session = NatSessionManager.getSession(portKey);
         if (session != null) {
-            if (ProxyConfig.Instance.needProxy(session.RemoteHost, session.RemoteIP)) {
-//                System.out.printf("%d/%d:[PROXY] %s=>%s:%d\n", NatSessionManager.getSessionCount(), Tunnel.SessionCount, session.RemoteHost, CommonMethods.ipIntToString(session.RemoteIP), session.RemotePort & 0xFFFF);
+            if (ProxyConfig.Instance.needProxy(session.RemoteHost, session.RemoteIP))
                 return InetSocketAddress.createUnresolved(session.RemoteHost, session.RemotePort & 0xFFFF);
-            } else {
+            else
                 return new InetSocketAddress(localChannel.socket().getInetAddress(), session.RemotePort & 0xFFFF);
-            }
         }
         return null;
     }
@@ -133,7 +130,6 @@ public class TcpProxyServer implements Runnable {
                                 onAccepted();
                             }
                         } catch (Exception e) {
-//                            e.printStackTrace();
                             key.cancel();
                             System.out.println(e.getMessage() + " during TcpServer processing");
                         }
@@ -155,7 +151,6 @@ public class TcpProxyServer implements Runnable {
         try {
             SocketChannel localChannel = m_ServerSocketChannel.accept();
             localTunnel = TunnelFactory.wrap(localChannel, m_Selector);
-            
             InetSocketAddress destAddress = getDestAddress(localChannel);
             if (destAddress != null) {
                 Tunnel remoteTunnel = TunnelFactory.createTunnelByConfig(destAddress, m_Selector);
