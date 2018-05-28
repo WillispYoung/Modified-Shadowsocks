@@ -14,6 +14,13 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 public abstract class Tunnel {
+    private SocketChannel m_InnerChannel;
+    private ByteBuffer m_SendRemainBuffer;
+    private Selector m_Selector;
+    private Tunnel m_BrotherTunnel;
+    private boolean m_Disposed;
+    private InetSocketAddress m_ServerEP;
+    protected InetSocketAddress m_DestAddress;
 
     final static ByteBuffer GL_BUFFER = ByteBuffer.allocate(20000);
     public static long SessionCount;
@@ -28,17 +35,10 @@ public abstract class Tunnel {
 
     protected abstract void onDispose();
 
-    protected SocketChannel m_InnerChannel;
-    private ByteBuffer m_SendRemainBuffer;
-    private Selector m_Selector;
-    private Tunnel m_BrotherTunnel;
-    private boolean m_Disposed;
-    private InetSocketAddress m_ServerEP;
-    protected InetSocketAddress m_DestAddress;
-    
+
     protected long bytesRead = 0;
     protected long bytesWritten = 0;
-    
+
     public Tunnel(SocketChannel innerChannel, Selector selector) {
         this.m_InnerChannel = innerChannel;
         this.m_Selector = selector;
@@ -53,25 +53,29 @@ public abstract class Tunnel {
         this.m_ServerEP = serverAddress;
         SessionCount++;
     }
-    
+
     public Selector getSelector() {
         return m_Selector;
     }
-    
+
     public void setBrotherTunnel(Tunnel brotherTunnel) {
         m_BrotherTunnel = brotherTunnel;
     }
-    
-    public Tunnel getBrotherTunnel() { return m_BrotherTunnel; }
-    
-    public SocketChannel getInnerChannel() { return m_InnerChannel; }
-    
+
+    public Tunnel getBrotherTunnel() {
+        return m_BrotherTunnel;
+    }
+
+    public SocketChannel getInnerChannel() {
+        return m_InnerChannel;
+    }
+
     public void connect(InetSocketAddress destAddress) throws Exception {
-        if (LocalVpnService.Instance.protect(m_InnerChannel.socket())) {//保护socket不走vpn
+        if (LocalVpnService.Instance.protect(m_InnerChannel.socket())) {                //保护socket不走vpn
             m_DestAddress = destAddress;
-            m_InnerChannel.register(m_Selector, SelectionKey.OP_CONNECT, this);//注册连接事件
-            m_InnerChannel.connect(m_ServerEP);//连接目标
-            
+            m_InnerChannel.register(m_Selector, SelectionKey.OP_CONNECT, this);     //注册连接事件
+            m_InnerChannel.connect(m_ServerEP);                                         //连接目标
+
         } else {
             throw new Exception("VPN protect socket failed.");
         }
@@ -89,7 +93,7 @@ public abstract class Tunnel {
         while (buffer.hasRemaining()) {
             bytesSent = m_InnerChannel.write(buffer);
             this.bytesWritten += bytesSent;
-            
+
             if (bytesSent == 0) {
                 break;//不能再发送了，终止循环
             }
@@ -142,7 +146,7 @@ public abstract class Tunnel {
                 buffer.flip();
                 afterReceived(buffer);//先让子类处理，例如解密数据。
                 this.bytesRead += bytesRead;
-                
+
                 if (isTunnelEstablished() && buffer.hasRemaining()) {//将读到的数据，转发给兄弟。
                     m_BrotherTunnel.beforeSend(buffer, false);//发送之前，先让子类处理，例如做加密等。
                     if (!m_BrotherTunnel.write(buffer, true)) {
@@ -151,8 +155,7 @@ public abstract class Tunnel {
                             System.out.printf("%s can not read more.\n", m_ServerEP);
                     }
                 }
-            }
-            else if (bytesRead < 0) {
+            } else if (bytesRead < 0) {
                 this.dispose();//连接已关闭，释放资源。
             }
         } catch (Exception e) {
@@ -184,7 +187,7 @@ public abstract class Tunnel {
     void disposeInternal(boolean disposeBrother) {
         if (!m_Disposed) {
             onDispose();
-            
+
             CommonMethods.close(m_InnerChannel);
 
             if (m_BrotherTunnel != null && disposeBrother) {
@@ -196,20 +199,20 @@ public abstract class Tunnel {
             m_Selector = null;
             m_BrotherTunnel = null;
             m_Disposed = true;
-            
-            SessionCount --;
+
+            SessionCount--;
         }
     }
-    
+
     public void closeSelf() {
         onDispose();
-        
+
         CommonMethods.close(m_InnerChannel);
-        m_InnerChannel=  null;
+        m_InnerChannel = null;
         m_SendRemainBuffer = null;
         m_Selector = null;
         m_BrotherTunnel = null;
-        
-        SessionCount --;
+
+        SessionCount--;
     }
 }

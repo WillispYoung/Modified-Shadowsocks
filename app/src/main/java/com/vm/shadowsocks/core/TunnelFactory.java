@@ -19,7 +19,8 @@ public class TunnelFactory {
     }
 
     public static Tunnel createTunnelByConfig(InetSocketAddress destAddress, Selector selector) throws Exception {
-        if (destAddress.isUnresolved()) { // 根据代理类型创建对应的Tunnel
+        // 根据代理类型创建对应的Tunnel
+        if (destAddress.isUnresolved() && !ProxyConfig.isFilter) {
             Config config = ProxyConfig.Instance.getDefaultTunnelConfig(destAddress);
             if (config instanceof HttpConnectConfig) {
                 return new HttpConnectTunnel((HttpConnectConfig) config, selector);
@@ -28,7 +29,8 @@ public class TunnelFactory {
             }
             throw new Exception("Unknown Config: " + config.ServerAddress.getHostString() + ":" + config.ServerAddress.getPort());
         }
-        else { // 直接连接，不发送给服务器
+        // 直接连接，不发送给服务器
+        else {
             return new RawTunnel(destAddress, selector);
         }
     }

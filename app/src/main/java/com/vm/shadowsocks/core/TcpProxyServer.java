@@ -23,33 +23,33 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class TcpProxyServer implements Runnable {
-    
+
     public boolean Stopped;
     public short Port;
-    
+
     Selector m_Selector;
     Thread m_ServerThread;
     ServerSocketChannel m_ServerSocketChannel;
-    
+
     ExecutorService executor = Executors.newCachedThreadPool();
-    
+
     public TcpProxyServer(int port) throws Exception {
         m_Selector = Selector.open();
         m_ServerSocketChannel = ServerSocketChannel.open();
         m_ServerSocketChannel.configureBlocking(false);
         m_ServerSocketChannel.socket().bind(new InetSocketAddress(port));
         m_ServerSocketChannel.register(m_Selector, SelectionKey.OP_ACCEPT);
-        
+
         this.Port = (short) m_ServerSocketChannel.socket().getLocalPort();
         System.out.printf("AsyncTcpServer listen on %d success.\n", this.Port & 0xFFFF);
     }
-    
+
     public void start() {
         m_ServerThread = new Thread(this);
         m_ServerThread.setName("TcpProxyServerThread");
         m_ServerThread.start();
     }
-    
+
     public void stop() {
         this.Stopped = true;
         if (m_Selector != null) {
@@ -60,7 +60,7 @@ public class TcpProxyServer implements Runnable {
                 e.printStackTrace();
             }
         }
-        
+
         if (m_ServerSocketChannel != null) {
             try {
                 m_ServerSocketChannel.close();
@@ -69,11 +69,11 @@ public class TcpProxyServer implements Runnable {
                 e.printStackTrace();
             }
         }
-        
+
         executor.shutdownNow();
         TaskScheduler.stopTasks();
     }
-    
+
     // 未解析的地址 = 发送给VPN服务器
     // 解析过的地址 = 直接发送到目的机器（包过滤）
     InetSocketAddress getDestAddress(SocketChannel localChannel) {
@@ -87,29 +87,29 @@ public class TcpProxyServer implements Runnable {
         }
         return null;
     }
-    
+
     // 发送认证报文
     public void sendAuthentication(SocketChannel channel, ICrypt encryptor,
                                    InetSocketAddress address) throws IOException {
         ByteBuffer buffer = ByteBuffer.allocate(2000);
         buffer.put((byte) 0x03);
-        
+
         byte[] domainBytes = address.getHostName().getBytes();
         buffer.put((byte) domainBytes.length);
         buffer.put(domainBytes);
         buffer.putShort((short) address.getPort());
         buffer.flip();
-        
+
         byte[] header = new byte[buffer.limit()];
         buffer.get(header);
-        
+
         buffer.clear();
         buffer.put(encryptor.encrypt(header));
         buffer.flip();
-        
+
         channel.write(buffer);
     }
-    
+
     @Override
     public void run() {
         try {
@@ -144,7 +144,7 @@ public class TcpProxyServer implements Runnable {
             System.out.println("TcpServer thread exited.");
         }
     }
-    
+
     // 初始设计，单线程SELECT调度
     private void onAccepted() {
         Tunnel localTunnel = null;
@@ -169,7 +169,7 @@ public class TcpProxyServer implements Runnable {
             LocalVpnService.Instance.writeLog("Error: remote socket create failed: %s", e.toString());
         }
     }
-    
+
     // 简单的循环异步多线程，每个线程只处理读
     // 读取第一个数据包，检查其访问的URL是否需要分流
     // 问题：多并发页面会卡住，猜测是线程调度的问题
@@ -180,54 +180,54 @@ public class TcpProxyServer implements Runnable {
             localChannel = m_ServerSocketChannel.accept();
             remoteChannel = SocketChannel.open();
             LocalVpnService.Instance.protect(remoteChannel.socket());
-            
+
             ByteBuffer buffer = ByteBuffer.allocate(2000);
             localChannel.read(buffer);
             buffer.flip();
-            
+
             boolean isReadable = true;
             HTTPRequestHeader header = null;
             NatSession session = NatSessionManager.getSession((short) localChannel.socket().getPort());
             ShadowsocksConfig config = (ShadowsocksConfig) ProxyConfig.Instance.getDefaultProxy();
             ICrypt encryptor = CryptFactory.get(config.EncryptMethod, config.Password);
-            
+
             try {
                 header = new HTTPRequestHeader(new String(buffer.array()).trim());
             } catch (Exception e) {
                 isReadable = false;
             }
-            
+
             // 分流：直接发送到目的服务器
             if (header != null) {
                 if (header.getUrl().matches("/\\S*.(mp4|flv|f4v)(\\?\\S+)?")) { // 分流出去
                     InetSocketAddress address = new InetSocketAddress(localChannel.socket().getInetAddress(), session.RemotePort & 0xFFFF);
                     remoteChannel.connect(address);
                     remoteChannel.write(buffer);
-                    
+
                     System.out.println("Bypass: " + header.getUrl());
                     executor.submit(new SimpleInProcess(localChannel, remoteChannel, isReadable));
                     executor.submit(new SimpleOutProcess(localChannel, remoteChannel, isReadable));
-                    
+
                     return;
                 }
             }
-            
+
             // 否则，默认发送到VPN服务器
             InetSocketAddress address = InetSocketAddress.createUnresolved(session.RemoteHost, session.RemotePort & 0xFFFF);
             remoteChannel.connect(config.ServerAddress);
             sendAuthentication(remoteChannel, encryptor, address);
-            
+
             byte[] bytes = new byte[buffer.limit()];
             buffer.get(bytes);
             buffer.clear();
             buffer.put(encryptor.encrypt(bytes));
             buffer.flip();
-            
+
             remoteChannel.write(buffer);
-            
+
             executor.submit(new SimpleInProcess(localChannel, remoteChannel, isReadable, encryptor));
             executor.submit(new SimpleOutProcess(localChannel, remoteChannel, isReadable, encryptor));
-            
+
         } catch (Exception e) {
             CommonMethods.close(localChannel);
             CommonMethods.close(remoteChannel);
@@ -235,7 +235,7 @@ public class TcpProxyServer implements Runnable {
             System.out.println("Error accept local channel and setup remote channel");
         }
     }
-    
+
     // 多线程，每个线程一个Selector，处理一组SocketChannel
     // 问题：多并发页面会崩溃，出现too many open files的错误
     private void onAcceptedSingleAsync() {
@@ -245,15 +245,15 @@ public class TcpProxyServer implements Runnable {
             local = m_ServerSocketChannel.accept();
             remote = SocketChannel.open();
             LocalVpnService.Instance.protect(remote.socket());
-            
+
             NatSession session = NatSessionManager.getSession((short) local.socket().getPort());
             ShadowsocksConfig config = (ShadowsocksConfig) ProxyConfig.Instance.getDefaultProxy();
             ICrypt encryptor = CryptFactory.get(config.EncryptMethod, config.Password);
             InetSocketAddress address = InetSocketAddress.createUnresolved(session.RemoteHost, session.RemotePort & 0xFFFF);
-            
+
             remote.connect(config.ServerAddress);
             sendAuthentication(remote, encryptor, address);
-            
+
             executor.submit(new SimpleSelectorProcess(local, remote, encryptor));
         } catch (Exception e) {
             e.printStackTrace();
@@ -261,7 +261,7 @@ public class TcpProxyServer implements Runnable {
             CommonMethods.close(remote);
         }
     }
-    
+
     // 多线程，每个线程一个Selector，处理多个SocketChannel
     // 根据每个线程处理的SocketChannel数目进行调度
     // 问题：Selector.wakeup和Selector.select会相互阻塞，导致效率极差
@@ -269,7 +269,7 @@ public class TcpProxyServer implements Runnable {
         try {
             SocketChannel localChannel = m_ServerSocketChannel.accept();
             InetSocketAddress address = getDestAddress(localChannel);
-            
+
             TaskScheduler.addTask(localChannel, address);
         } catch (Exception e) {
             e.printStackTrace();

@@ -28,9 +28,9 @@ public class ShadowsocksTunnel extends Tunnel {
 
         buffer.put((byte) 0x03);//domain
         byte[] domainBytes = m_DestAddress.getHostName().getBytes();
-        buffer.put((byte) domainBytes.length);//domain length;
-        buffer.put(domainBytes);
-        buffer.putShort((short) m_DestAddress.getPort());
+        buffer.put((byte) domainBytes.length);  //domain length;
+        buffer.put(domainBytes);                // domain
+        buffer.putShort((short) m_DestAddress.getPort());   // port
         buffer.flip();
         byte[] _header = new byte[buffer.limit()];
         buffer.get(_header);

@@ -29,27 +29,29 @@ import java.util.regex.Pattern;
 
 public class ProxyConfig {
     public static final ProxyConfig Instance = new ProxyConfig();
-    public final static boolean IS_DEBUG = false;
-    public static String AppInstallID;
-    public static String AppVersion;
+    public final static boolean     IS_DEBUG = false;
+    public static String            AppInstallID;
+    public static String            AppVersion;
+
     public final static int FAKE_NETWORK_MASK = CommonMethods.ipStringToInt("255.255.0.0");
     public final static int FAKE_NETWORK_IP = CommonMethods.ipStringToInt("172.25.0.0");
 
-    ArrayList<IPAddress> m_IpList;
-    ArrayList<IPAddress> m_DnsList;
-    ArrayList<IPAddress> m_RouteList;
-    public ArrayList<Config> m_ProxyList;
-    HashMap<String, Boolean> m_DomainMap;
+    ArrayList<IPAddress>        m_IpList;
+    ArrayList<IPAddress>        m_DnsList;
+    ArrayList<IPAddress>        m_RouteList;
+    public ArrayList<Config>    m_ProxyList;
+    HashMap<String, Boolean>    m_DomainMap;
 
-    public boolean globalMode = true;
+    public static boolean globalMode = true;
+    public static boolean isFilter = true;
 
-    int m_dns_ttl;
-    String m_welcome_info;
-    String m_session_name;
-    String m_user_agent;
-    boolean m_outside_china_use_proxy = true;
-    boolean m_isolate_http_host_header = true;
-    int m_mtu;
+    int         m_dns_ttl;
+    int         m_mtu;
+    String      m_welcome_info;
+    String      m_session_name;
+    String      m_user_agent;
+    boolean     m_outside_china_use_proxy = true;
+    boolean     m_isolate_http_host_header = true;
 
     Timer m_Timer;
 
@@ -294,7 +296,6 @@ public class ProxyConfig {
     }
 
     protected void loadFromLines(String[] lines) throws Exception {
-
         m_IpList.clear();
         m_DnsList.clear();
         m_RouteList.clear();
