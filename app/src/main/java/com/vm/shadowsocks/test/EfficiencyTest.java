@@ -1,7 +1,5 @@
 package com.vm.shadowsocks.test;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -21,7 +19,7 @@ public class EfficiencyTest {
 
         for (String method : methods) {
             try {
-                Thread thread = new TestThread(method);
+                Thread thread = new EfficiencyTestThread(method);
                 service.submit(thread);
 
                 Thread.sleep(1000);

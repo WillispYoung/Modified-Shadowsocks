@@ -212,9 +212,9 @@ public class ProxyConfig {
         return null;
     }
     public boolean needProxy(String host, int ip) {
-        if (globalMode) {
-            return true;
-        }
+        if (isFilter) return false;
+        if (globalMode) return true;
+
         if (host != null) {
             Boolean stateBoolean = getDomainState(host);
             if (stateBoolean != null) {

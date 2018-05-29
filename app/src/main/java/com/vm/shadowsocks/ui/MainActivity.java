@@ -30,6 +30,7 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 import com.vm.shadowsocks.R;
 import com.vm.shadowsocks.test.EfficiencyTest;
+import com.vm.shadowsocks.test.ProtoPortionTest;
 import com.vm.shadowsocks.util.AppInfo;
 import com.vm.shadowsocks.core.AppProxyManager;
 import com.vm.shadowsocks.core.LocalVpnService;
@@ -346,8 +347,10 @@ public class MainActivity extends Activity implements
                             }
                         })
                         .show();
-//                 Run Test
+
+                 // Run Test
 //                new EfficiencyTest().runTest();
+                ProtoPortionTest.showResult();
 
                 return true;
             case R.id.menu_item_exit:

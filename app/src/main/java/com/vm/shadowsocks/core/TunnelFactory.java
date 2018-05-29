@@ -31,7 +31,9 @@ public class TunnelFactory {
         }
         // 直接连接，不发送给服务器
         else {
-            return new RawTunnel(destAddress, selector);
+            RawTunnel remote = new RawTunnel(destAddress, selector);
+            remote.setLocal(false);
+            return remote;
         }
     }
 }

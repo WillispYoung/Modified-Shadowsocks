@@ -154,9 +154,9 @@ public class TcpProxyServer implements Runnable {
             InetSocketAddress destAddress = getDestAddress(localChannel);
             if (destAddress != null) {
                 Tunnel remoteTunnel = TunnelFactory.createTunnelByConfig(destAddress, m_Selector);
-                remoteTunnel.setBrotherTunnel(localTunnel); //关联兄弟
-                localTunnel.setBrotherTunnel(remoteTunnel); //关联兄弟
-                remoteTunnel.connect(destAddress);          //开始连接：实际连接服务器
+                remoteTunnel.setBrotherTunnel(localTunnel);
+                localTunnel.setBrotherTunnel(remoteTunnel);
+                remoteTunnel.connect(destAddress);
             } else {
                 LocalVpnService.Instance.writeLog("Error: socket(%s:%d) target host is null.", localChannel.socket().getInetAddress().toString(), localChannel.socket().getPort());
                 localTunnel.dispose();

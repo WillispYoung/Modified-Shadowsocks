@@ -6,7 +6,7 @@ import com.vm.shadowsocks.tunnel.shadowsocks.ShadowsocksConfig;
 
 import java.util.Random;
 
-public class TestThread extends Thread {
+public class EfficiencyTestThread extends Thread {
     public static char[] allChar = "abcdefghijklmnopqrstuvwxyz1234567890,./;'<>{}[]()!@#$%^&*_+-=".toCharArray();
     public static String test1 = generateRandomString(10000);
     public static String test2 = generateRandomString(50000);
@@ -18,7 +18,7 @@ public class TestThread extends Thread {
 
     // url format: ss://method:password@host:port
 
-    public TestThread(String method) {
+    public EfficiencyTestThread(String method) {
         this.method = method;
 
         try {

@@ -14,12 +14,12 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 public abstract class Tunnel {
-    private SocketChannel m_InnerChannel;
-    private ByteBuffer m_SendRemainBuffer;
-    private Selector m_Selector;
-    private Tunnel m_BrotherTunnel;
-    private boolean m_Disposed;
-    private InetSocketAddress m_ServerEP;
+    private SocketChannel       m_InnerChannel;
+    private ByteBuffer          m_SendRemainBuffer;
+    private Selector            m_Selector;
+    private Tunnel              m_BrotherTunnel;
+    private boolean             m_Disposed;
+    private InetSocketAddress   m_ServerEP;
     protected InetSocketAddress m_DestAddress;
 
     final static ByteBuffer GL_BUFFER = ByteBuffer.allocate(20000);
@@ -34,7 +34,6 @@ public abstract class Tunnel {
     protected abstract void afterReceived(ByteBuffer buffer) throws Exception;
 
     protected abstract void onDispose();
-
 
     protected long bytesRead = 0;
     protected long bytesWritten = 0;
