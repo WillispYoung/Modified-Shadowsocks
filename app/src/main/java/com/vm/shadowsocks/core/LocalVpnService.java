@@ -191,7 +191,7 @@ public class LocalVpnService extends VpnService implements Runnable {
             ChinaIpMaskManager.loadFromFile(getResources().openRawResource(R.raw.ipmask));//加载中国的IP段，用于IP分流。
             waitUntilPreapred();//检查是否准备完毕。
 
-            // 加载SS配置
+            // 加载配置
             try {
                 ProxyConfig.Instance.loadFromFile(getResources().openRawResource(R.raw.config));
                 writeLog("Config file loaded");

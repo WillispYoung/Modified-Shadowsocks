@@ -14,13 +14,13 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 public abstract class Tunnel {
-    private SocketChannel       m_InnerChannel;
-    private ByteBuffer          m_SendRemainBuffer;
-    private Selector            m_Selector;
-    private Tunnel              m_BrotherTunnel;
-    private boolean             m_Disposed;
-    private InetSocketAddress   m_ServerEP;
-    protected InetSocketAddress m_DestAddress;
+    protected   SocketChannel       m_InnerChannel;
+    private     ByteBuffer          m_SendRemainBuffer;
+    private     Selector            m_Selector;
+    private     Tunnel              m_BrotherTunnel;
+    private     boolean             m_Disposed;
+    private     InetSocketAddress   m_ServerEP;
+    protected   InetSocketAddress   m_DestAddress;
 
     final static ByteBuffer GL_BUFFER = ByteBuffer.allocate(20000);
     public static long SessionCount;
@@ -167,7 +167,7 @@ public abstract class Tunnel {
         try {
             this.beforeSend(m_SendRemainBuffer, true);//发送之前，先让子类处理，例如做加密等。
             if (this.write(m_SendRemainBuffer, false)) {//如果剩余数据已经发送完毕
-                key.cancel();//取消写事件。
+                key.cancel();                       //取消写事件。
                 if (isTunnelEstablished()) {
                     m_BrotherTunnel.beginReceive();//这边数据发送完毕，通知兄弟可以收数据了。
                 } else {
@@ -190,7 +190,7 @@ public abstract class Tunnel {
             CommonMethods.close(m_InnerChannel);
 
             if (m_BrotherTunnel != null && disposeBrother) {
-                m_BrotherTunnel.disposeInternal(false);//把兄弟的资源也释放了。
+                m_BrotherTunnel.disposeInternal(false);
             }
 
             m_InnerChannel = null;

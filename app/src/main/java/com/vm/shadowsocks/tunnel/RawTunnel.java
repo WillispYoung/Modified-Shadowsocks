@@ -61,25 +61,16 @@ public class RawTunnel extends Tunnel {
     @Override
     protected void beforeSend(ByteBuffer buffer, boolean isPartial) throws Exception {
         // 只处理本地接收的HTTP响应数据包
-//        if (isReadable && isLocal && !isPartial) {
-//            String content = new String(buffer.array()).trim();
-//            long time = System.currentTimeMillis();
-//
-//            capturedPackets.add(new PacketEntry(content, time, false));
-//
-//            TrafficSessionManager.OriginHTTPBytesReceived += content.length();
-//
-//            if (isBypassed)
-//                TrafficSessionManager.VideoBytesReceived += content.length();
-//        }
-        if (isLocal && !isPartial) {
-            if (isReadable) {
-                ProtoPortionTest.HttpReceived += buffer.remaining();
-                if (isBypassed)
-                    ProtoPortionTest.VideoReceived += buffer.remaining();
-            }
-            else
-                ProtoPortionTest.HttpsReceived += buffer.remaining();
+        if (isReadable && isLocal && !isPartial) {
+            String content = new String(buffer.array()).trim();
+            long time = System.currentTimeMillis();
+
+            capturedPackets.add(new PacketEntry(content, time, false));
+
+            TrafficSessionManager.OriginHTTPBytesReceived += content.length();
+
+            if (isBypassed)
+                TrafficSessionManager.VideoBytesReceived += content.length();
         }
     }
     
@@ -90,57 +81,64 @@ public class RawTunnel extends Tunnel {
             String content = new String(buffer.array()).trim();
             try {
                 HTTPRequestHeader header = new HTTPRequestHeader(content);
-//                if (header.getValue("Host") != null) {
-//                    if (CommonMethods.checkMaliciousDomain(header.getValue("Host"))) {
-//                        // TODO 访问恶意域名的处理
-//                        return;
-//                    }
-//                }
+                if (header.getValue("Host") != null) {
+                    if (CommonMethods.checkMaliciousDomain(header.getValue("Host"))) {
+                        // TODO 访问恶意域名的处理
+                        String blockResponse = "HTTP/1.1 200 OK\n" +
+                                "Server: nginx/1.4.6 (Ubuntu)\n" +
+                                "Date: Fri, 29 Jun 2018 07:32:20 GMT\n" +
+                                "Content-Type: text/html; charset=utf-8\n" +
+                                "Connection: keep-alive\n" +
+                                "\n" +
+                                "Malicious Domain!";
+                        this.m_InnerChannel.write(ByteBuffer.wrap(blockResponse.getBytes()));
+                        this.dispose();
+
+                        return;
+                    }
+                }
+
                 if (!isBypassed && header.getUrl() != null) {
                     String url = header.getUrl();
                     if (CommonMethods.checkBypassUrl(url)) {
                         System.out.println("Bypass url: " + url);
-//                        this.getBrotherTunnel().closeSelf();
-//
-//                        // 生成目的主机的地址
-//                        short portKey = (short) getInnerChannel().socket().getPort();
-//                        NatSession session = NatSessionManager.getSession(portKey);
-//                        InetSocketAddress address = new InetSocketAddress(getInnerChannel().socket().getInetAddress(), session.RemotePort & 0xFFFF);
-//
-//                        // 保护，然后连接
-//                        SocketChannel channel = SocketChannel.open();
-//                        LocalVpnService.Instance.protect(channel.socket());
-//                        channel.connect(address);
-//                        channel.configureBlocking(false);
-//
-//                        RawTunnel tunnel = new RawTunnel(channel, this.getSelector());
-//                        tunnel.setLocal(false);
-//                        tunnel.setBypassed(true);
-//
-//                        // 互相设置兄弟然后注册
-//                        this.setBrotherTunnel(tunnel);
-//                        tunnel.setBrotherTunnel(this);
-//                        channel.register(this.getSelector(), SelectionKey.OP_READ, tunnel);
+                        this.getBrotherTunnel().closeSelf();
+
+                        // 生成目的主机的地址
+                        short portKey = (short) getInnerChannel().socket().getPort();
+                        NatSession session = NatSessionManager.getSession(portKey);
+                        InetSocketAddress address = new InetSocketAddress(getInnerChannel().socket().getInetAddress(), session.RemotePort & 0xFFFF);
+
+                        // 保护，然后连接
+                        SocketChannel channel = SocketChannel.open();
+                        LocalVpnService.Instance.protect(channel.socket());
+                        channel.connect(address);
+                        channel.configureBlocking(false);
+
+                        RawTunnel tunnel = new RawTunnel(channel, this.getSelector());
+                        tunnel.setLocal(false);
+                        tunnel.setBypassed(true);
+
+                        // 互相设置兄弟然后注册
+                        this.setBrotherTunnel(tunnel);
+                        tunnel.setBrotherTunnel(this);
+                        channel.register(this.getSelector(), SelectionKey.OP_READ, tunnel);
                         isBypassed = true;
                     }
                 }
-//                long time = System.currentTimeMillis();
-//                capturedPackets.add(new PacketEntry(content, time, true));
-//
-//                TrafficSessionManager.OriginHTTPBytesSent += content.length();
-//
-//                if (isBypassed)
-//                    TrafficSessionManager.VideoBytesSent += content.length();
-                ProtoPortionTest.HttpSent += content.length();
+                long time = System.currentTimeMillis();
+                capturedPackets.add(new PacketEntry(content, time, true));
+
+                TrafficSessionManager.OriginHTTPBytesSent += content.length();
+
                 if (isBypassed)
-                    ProtoPortionTest.VideoSent += content.length();
+                    TrafficSessionManager.VideoBytesSent += content.length();
             }
             catch (Exception e) {
                 if (!e.getMessage().equals("Data is not in HTTP request format"))
                     e.printStackTrace();
                 else {
                     isReadable = false;
-                    ProtoPortionTest.HttpsSent += content.length();
                 }
             }
         }
@@ -151,17 +149,17 @@ public class RawTunnel extends Tunnel {
 
     @Override
     protected void onDispose() {
-//        if (isLocal && isReadable) {
-//            String domain = "";
-//            int port = getInnerChannel().socket().getPort();
-//            NatSession session = NatSessionManager.getSession((short) port);
-//            if (session != null)
-//                domain = session.RemoteHost;
-//
-//            if (capturedPackets.size() > 0) {
-//                SessionContent content = new SessionContent(capturedPackets, domain, null, port, bytesRead, bytesWritten);
-//                TrafficSessionManager.addSession(content);
-//            }
-//        }
+        if (isLocal && isReadable) {
+            String domain = "";
+            int port = getInnerChannel().socket().getPort();
+            NatSession session = NatSessionManager.getSession((short) port);
+            if (session != null)
+                domain = session.RemoteHost;
+
+            if (capturedPackets.size() > 0) {
+                SessionContent content = new SessionContent(capturedPackets, domain, null, port, bytesRead, bytesWritten);
+                TrafficSessionManager.addSession(content);
+            }
+        }
     }
 }

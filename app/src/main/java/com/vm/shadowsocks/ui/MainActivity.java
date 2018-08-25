@@ -262,8 +262,6 @@ public class MainActivity extends Activity implements
     
     private void startVPNService() {
         String proxyUrl = readProxyUrl();
-//      proxyUrl = "ss://aes-256-cfb:helloworld@115.159.98.37:443";
-//      proxyUrl = "ss://rc4-md5:callandor@47.88.48.236:1997";
         
         if (!isValidUrl(proxyUrl)) {
             Toast.makeText(this, R.string.err_invalid_url, Toast.LENGTH_SHORT).show();

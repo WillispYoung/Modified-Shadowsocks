@@ -1,37 +1,22 @@
 package com.vm.shadowsocks.core;
 
-import com.vm.shadowsocks.tcpip.CommonMethods;
-import com.vm.shadowsocks.tcpip.HTTPRequestHeader;
-import com.vm.shadowsocks.tunnel.SimpleInProcess;
-import com.vm.shadowsocks.tunnel.SimpleOutProcess;
-import com.vm.shadowsocks.tunnel.SimpleSelectorProcess;
-import com.vm.shadowsocks.tunnel.TaskScheduler;
 import com.vm.shadowsocks.tunnel.Tunnel;
-import com.vm.shadowsocks.tunnel.shadowsocks.CryptFactory;
-import com.vm.shadowsocks.tunnel.shadowsocks.ICrypt;
-import com.vm.shadowsocks.tunnel.shadowsocks.ShadowsocksConfig;
-
-import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class TcpProxyServer implements Runnable {
 
     public boolean Stopped;
     public short Port;
 
-    Selector m_Selector;
-    Thread m_ServerThread;
+    private Selector    m_Selector;
+    private Thread      m_ServerThread;
     ServerSocketChannel m_ServerSocketChannel;
 
-    ExecutorService executor = Executors.newCachedThreadPool();
 
     public TcpProxyServer(int port) throws Exception {
         m_Selector = Selector.open();
@@ -69,14 +54,9 @@ public class TcpProxyServer implements Runnable {
                 e.printStackTrace();
             }
         }
-
-        executor.shutdownNow();
-        TaskScheduler.stopTasks();
     }
 
-    // 未解析的地址 = 发送给VPN服务器
-    // 解析过的地址 = 直接发送到目的机器（包过滤）
-    InetSocketAddress getDestAddress(SocketChannel localChannel) {
+    private InetSocketAddress getDestAddress(SocketChannel localChannel) {
         short portKey = (short) localChannel.socket().getPort();
         NatSession session = NatSessionManager.getSession(portKey);
         if (session != null) {
@@ -86,28 +66,6 @@ public class TcpProxyServer implements Runnable {
                 return new InetSocketAddress(localChannel.socket().getInetAddress(), session.RemotePort & 0xFFFF);
         }
         return null;
-    }
-
-    // 发送认证报文
-    public void sendAuthentication(SocketChannel channel, ICrypt encryptor,
-                                   InetSocketAddress address) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(2000);
-        buffer.put((byte) 0x03);
-
-        byte[] domainBytes = address.getHostName().getBytes();
-        buffer.put((byte) domainBytes.length);
-        buffer.put(domainBytes);
-        buffer.putShort((short) address.getPort());
-        buffer.flip();
-
-        byte[] header = new byte[buffer.limit()];
-        buffer.get(header);
-
-        buffer.clear();
-        buffer.put(encryptor.encrypt(header));
-        buffer.flip();
-
-        channel.write(buffer);
     }
 
     @Override
@@ -145,7 +103,6 @@ public class TcpProxyServer implements Runnable {
         }
     }
 
-    // 初始设计，单线程SELECT调度
     private void onAccepted() {
         Tunnel localTunnel = null;
         try {
@@ -167,112 +124,6 @@ public class TcpProxyServer implements Runnable {
                 localTunnel.dispose();
             }
             LocalVpnService.Instance.writeLog("Error: remote socket create failed: %s", e.toString());
-        }
-    }
-
-    // 简单的循环异步多线程，每个线程只处理读
-    // 读取第一个数据包，检查其访问的URL是否需要分流
-    // 问题：多并发页面会卡住，猜测是线程调度的问题
-    private void onAcceptedSimpleAsync() {
-        SocketChannel localChannel = null;
-        SocketChannel remoteChannel = null;
-        try {
-            localChannel = m_ServerSocketChannel.accept();
-            remoteChannel = SocketChannel.open();
-            LocalVpnService.Instance.protect(remoteChannel.socket());
-
-            ByteBuffer buffer = ByteBuffer.allocate(2000);
-            localChannel.read(buffer);
-            buffer.flip();
-
-            boolean isReadable = true;
-            HTTPRequestHeader header = null;
-            NatSession session = NatSessionManager.getSession((short) localChannel.socket().getPort());
-            ShadowsocksConfig config = (ShadowsocksConfig) ProxyConfig.Instance.getDefaultProxy();
-            ICrypt encryptor = CryptFactory.get(config.EncryptMethod, config.Password);
-
-            try {
-                header = new HTTPRequestHeader(new String(buffer.array()).trim());
-            } catch (Exception e) {
-                isReadable = false;
-            }
-
-            // 分流：直接发送到目的服务器
-            if (header != null) {
-                if (header.getUrl().matches("/\\S*.(mp4|flv|f4v)(\\?\\S+)?")) { // 分流出去
-                    InetSocketAddress address = new InetSocketAddress(localChannel.socket().getInetAddress(), session.RemotePort & 0xFFFF);
-                    remoteChannel.connect(address);
-                    remoteChannel.write(buffer);
-
-                    System.out.println("Bypass: " + header.getUrl());
-                    executor.submit(new SimpleInProcess(localChannel, remoteChannel, isReadable));
-                    executor.submit(new SimpleOutProcess(localChannel, remoteChannel, isReadable));
-
-                    return;
-                }
-            }
-
-            // 否则，默认发送到VPN服务器
-            InetSocketAddress address = InetSocketAddress.createUnresolved(session.RemoteHost, session.RemotePort & 0xFFFF);
-            remoteChannel.connect(config.ServerAddress);
-            sendAuthentication(remoteChannel, encryptor, address);
-
-            byte[] bytes = new byte[buffer.limit()];
-            buffer.get(bytes);
-            buffer.clear();
-            buffer.put(encryptor.encrypt(bytes));
-            buffer.flip();
-
-            remoteChannel.write(buffer);
-
-            executor.submit(new SimpleInProcess(localChannel, remoteChannel, isReadable, encryptor));
-            executor.submit(new SimpleOutProcess(localChannel, remoteChannel, isReadable, encryptor));
-
-        } catch (Exception e) {
-            CommonMethods.close(localChannel);
-            CommonMethods.close(remoteChannel);
-            e.printStackTrace();
-            System.out.println("Error accept local channel and setup remote channel");
-        }
-    }
-
-    // 多线程，每个线程一个Selector，处理一组SocketChannel
-    // 问题：多并发页面会崩溃，出现too many open files的错误
-    private void onAcceptedSingleAsync() {
-        SocketChannel local = null;
-        SocketChannel remote = null;
-        try {
-            local = m_ServerSocketChannel.accept();
-            remote = SocketChannel.open();
-            LocalVpnService.Instance.protect(remote.socket());
-
-            NatSession session = NatSessionManager.getSession((short) local.socket().getPort());
-            ShadowsocksConfig config = (ShadowsocksConfig) ProxyConfig.Instance.getDefaultProxy();
-            ICrypt encryptor = CryptFactory.get(config.EncryptMethod, config.Password);
-            InetSocketAddress address = InetSocketAddress.createUnresolved(session.RemoteHost, session.RemotePort & 0xFFFF);
-
-            remote.connect(config.ServerAddress);
-            sendAuthentication(remote, encryptor, address);
-
-            executor.submit(new SimpleSelectorProcess(local, remote, encryptor));
-        } catch (Exception e) {
-            e.printStackTrace();
-            CommonMethods.close(local);
-            CommonMethods.close(remote);
-        }
-    }
-
-    // 多线程，每个线程一个Selector，处理多个SocketChannel
-    // 根据每个线程处理的SocketChannel数目进行调度
-    // 问题：Selector.wakeup和Selector.select会相互阻塞，导致效率极差
-    private void onAcceptedScheduled() {
-        try {
-            SocketChannel localChannel = m_ServerSocketChannel.accept();
-            InetSocketAddress address = getDestAddress(localChannel);
-
-            TaskScheduler.addTask(localChannel, address);
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 }
